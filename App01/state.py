@@ -1,6 +1,7 @@
 import reflex as rx
 import asyncio
 import os
+
 from openai import AsyncOpenAI
 
 class State(rx.State):
@@ -9,19 +10,29 @@ class State(rx.State):
     chat_history: list[tuple[str,str]]
 
     async def answer(self):
-        answer = "I don't know!"
-        self.chat_history.append((self.question,""))
+        client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+        session = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": self.question}
+            ],
+            stop=None,
+            temperature=0.7,
+            stream=True,
+        )
+
+        answer = ""
+        self.chat_history.append((self.question,answer))
+
         self.question = ""
         
         yield
 
-        for i in range(len(answer)):
-            await asyncio.sleep(0.1)
-            self.chat_history[-1] = (
-                self.chat_history[-1][0],
-                answer[:i+1]
-            )
-            yield
-
-
-
+        async for item in session:
+            if hasattr(item.choices[0].delta,"content"):
+                if item.choices[0].delta.content is None:
+                    break
+                answer += item.choices[0].delta.content
+                self.chat_history[-1] = (self.chat_history[-1][0],answer)
+                yield
