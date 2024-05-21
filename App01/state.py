@@ -1,10 +1,8 @@
 import reflex as rx
-import asyncio
 import os
-
 from openai import AsyncOpenAI
 
-class State(rx.State):
+class TutorialState(rx.State):
     question: str
 
     chat_history: list[tuple[str,str]]
